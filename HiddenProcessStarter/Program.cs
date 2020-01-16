@@ -25,7 +25,11 @@ namespace HiddenProcessStarter
             var currentlyStartedProcesses = GetAllProcessesByNameOrWindowTitle(processName);
             if (currentlyStartedProcesses.Any())
             {
-                foreach (var p in currentlyStartedProcesses) p.Kill();
+                foreach (var p in currentlyStartedProcesses)
+                {
+                    p.Kill();
+                }
+
                 return;
             }
 
@@ -58,7 +62,7 @@ namespace HiddenProcessStarter
         }
 
         [DllImport("user32.dll")]
-        private static extern int ShowWindow(int hwnd, int nCmdShow);
+        private static extern int ShowWindow(int hWnd, int nCmdShow);
 
         private static IReadOnlyList<Process> GetAllProcessesByNameOrWindowTitle(string processName)
         {
