@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
+using System.Reflection;
 using System.Runtime.InteropServices;
 using System.Threading;
 
@@ -12,52 +13,62 @@ namespace HiddenProcessStarter
     {
         private static void Main()
         {
-            var setting = File.ReadAllText("HiddenProcessStarter.txt");
+            var currentExecutablePath = Path.GetDirectoryName(Assembly.GetEntryAssembly().Location);
 
-            var settingsSpl = setting
-                .Replace("\r", string.Empty)
-                .Split(new[] {"\n"}, StringSplitOptions.None);
-
-            var processName = settingsSpl[0];
-            var filePath = settingsSpl[1];
-            var waitMilliseconds = int.Parse(settingsSpl[2]);
-
-            var currentlyStartedProcesses = GetAllProcessesByNameOrWindowTitle(processName);
-            if (currentlyStartedProcesses.Any())
+            try
             {
-                foreach (var p in currentlyStartedProcesses)
+                var setting = File.ReadAllText(Path.Combine(currentExecutablePath, "HiddenProcessStarter.txt"));
+
+                var settingsSpl = setting
+                    .Replace("\r", string.Empty)
+                    .Split(new[] { "\n" }, StringSplitOptions.None);
+
+                var processName = settingsSpl[0];
+                var filePath = settingsSpl[1];
+                var waitMilliseconds = int.Parse(settingsSpl[2]);
+
+                var currentlyStartedProcesses = GetAllProcessesByNameOrWindowTitle(processName);
+                if (currentlyStartedProcesses.Any())
                 {
-                    p.Kill();
-                }
-
-                return;
-            }
-
-            Process.Start(new ProcessStartInfo
-            {
-                FileName = "cmd",
-                Arguments = $"/C \"{filePath}\"",
-                WindowStyle = ProcessWindowStyle.Hidden
-            });
-
-            var endDate = DateTime.Now.AddMilliseconds(waitMilliseconds);
-            while (true)
-            {
-                if (DateTime.Now > endDate) return;
-
-                var startedProcess = GetAllProcessesByNameOrWindowTitle(processName);
-
-                if (startedProcess.Any(p => p.MainWindowHandle != IntPtr.Zero))
-                {
-                    foreach (var p in startedProcess)
+                    foreach (var p in currentlyStartedProcesses)
                     {
-                        ShowWindow(p.MainWindowHandle.ToInt32(), 0);
+                        p.Kill();
                     }
 
-                    break;
+                    return;
                 }
 
-                Thread.Sleep(50);
+                Process.Start(new ProcessStartInfo
+                {
+                    FileName = "cmd",
+                    Arguments = $"/C \"{filePath}\"",
+                    WindowStyle = ProcessWindowStyle.Hidden,
+                    LoadUserProfile = false
+                });
+
+                var endDate = DateTime.Now.AddMilliseconds(waitMilliseconds);
+                while (true)
+                {
+                    if (DateTime.Now > endDate) return;
+
+                    var startedProcess = GetAllProcessesByNameOrWindowTitle(processName);
+
+                    if (startedProcess.Any(p => p.MainWindowHandle != IntPtr.Zero))
+                    {
+                        foreach (var p in startedProcess)
+                        {
+                            ShowWindow(p.MainWindowHandle.ToInt32(), 0);
+                        }
+
+                        break;
+                    }
+
+                    Thread.Sleep(50);
+                }
+            }
+            catch (Exception e)
+            {
+                File.WriteAllText(Path.Combine(currentExecutablePath, "error.txt"), $"Error occured - {e.ToString()}");
             }
         }
 
